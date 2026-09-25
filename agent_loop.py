@@ -409,7 +409,7 @@ class DefaultDeps:
         return str(uuid4())
 
     def _compact_messages(self, messages: list[Message]) -> dict[str, Any]:
-        keep_count = min(self.keep_recent_after_compact, max(1, len(messages) // 4))
+        keep_count = max(1, min(self.keep_recent_after_compact, len(messages)))
         keep = messages[-keep_count:]
         summarize = messages[:-keep_count]
         summary_text = self._summarize_messages(summarize)
@@ -519,7 +519,7 @@ async def query_loop(params: QueryParams, deps: Deps) -> AsyncGenerator[Message,
 
         options = _tool_use_context_options(tool_use_context)
         token_state = calculate_token_warning_state(
-            token_count_with_estimation(messages_for_query) - snip_tokens_freed,
+            token_count_with_estimation(messages_for_query),
             options.main_loop_model,
         )
         if token_state["is_at_blocking_limit"] and not compaction_result:
@@ -691,6 +691,7 @@ async def query_loop(params: QueryParams, deps: Deps) -> AsyncGenerator[Message,
         if params.max_turns and next_turn_count > params.max_turns:
             yield {
                 "type": "attachment",
+                "timestamp": _now(),
                 "attachment": {
                     "type": "max_turns_reached",
                     "max_turns": params.max_turns,
